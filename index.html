@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8">
+  <title>AI Prompt Artist & Character Card</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- QRCode.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- Custom Cyberpunk Font & Styling -->
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700&display=swap');
+
+    body {
+      font-family: 'Kanit', sans-serif;
+      background-color: #0b0f19;
+      color: #e2e8f0;
+    }
+
+    .neon-border {
+      box-shadow: 0 0 15px rgba(6, 182, 212, 0.5), inset 0 0 15px rgba(6, 182, 212, 0.3);
+    }
+
+    .neon-text {
+      text-shadow: 0 0 8px rgba(6, 182, 212, 0.8), 0 0 15px rgba(168, 85, 247, 0.6);
+    }
+
+    /* CSS สำหรับควบคุมการพิมพ์ออกเครื่องพิมพ์ */
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+
+      #print-area,
+      #print-area * {
+        visibility: visible;
+      }
+
+      #print-area {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100vw;
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: white;
+      }
+
+      #previewCanvas {
+        width: 2.5in !important;
+        height: 3.8in !important;
+        box-shadow: none !important;
+        border: none !important;
+      }
+    }
+  </style>
+</head>
+
+<body class="min-h-screen pb-10">
+
+  <!-- Header Section -->
+  <header class="py-6 bg-slate-900/80 border-b border-cyan-500/30 sticky top-0 z-50 backdrop-blur-md">
+    <div class="container mx-auto px-4 text-center">
+      <h1 class="text-3xl md:text-4xl font-bold text-cyan-400 neon-text tracking-wider">
+        🤖 AI PROMPT ARTIST & CHARACTER CARD
+      </h1>
+      <p class="text-slate-400 text-sm md:text-base mt-1">งานสัปดาห์วันวิทยาศาสตร์ | Science Day 2026</p>
+    </div>
+  </header>
+
+  <main class="container mx-auto px-4 mt-8 max-w-5xl">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+      <!-- ฝั่งซ้าย: ฟอร์ม + กล้อง + ตัวเลือก Presets (Cols 7) -->
+      <div class="lg:col-span-7 space-y-6">
+
+        <!-- 1. ข้อมูลนักเรียน -->
+        <div class="bg-slate-900/90 border border-slate-700 p-5 rounded-xl shadow-lg">
+          <h2 class="text-lg font-semibold text-cyan-400 mb-4 flex items-center gap-2">
+            <span>👤</span> ข้อมูลผู้สร้างการ์ด
+          </h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">ชื่อ-นามสกุล</label>
+              <input type="text" id="studentName" placeholder="ด.ช. วิทยา สายโค้ด"
+                class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-400 transition">
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">ระดับชั้น / ห้อง</label>
+              <input type="text" id="studentClass" placeholder="ม. 3/1"
+                class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-cyan-400 transition">
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. ถ่ายรูป Webcam -->
+        <div class="bg-slate-900/90 border border-slate-700 p-5 rounded-xl shadow-lg">
+          <h2 class="text-lg font-semibold text-cyan-400 mb-4 flex items-center gap-2">
+            <span>📸</span> ถ่ายภาพใบหน้า (Webcam)
+          </h2>
+          <div
+            class="relative bg-slate-950 rounded-lg overflow-hidden border border-slate-800 aspect-video flex items-center justify-center">
+            <video id="webcam" autoplay playsinline class="w-full h-full object-cover"></video>
+            <img id="capturedImage" class="hidden w-full h-full object-cover absolute top-0 left-0" />
+            <div id="webcamPlaceholder" class="hidden text-slate-500 text-sm">ยังไม่ได้เปิดกล้อง</div>
+          </div>
+          <div class="flex gap-3 mt-4">
+            <button id="btnSnap" onclick="takeSnapshot()"
+              class="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold py-2 px-4 rounded-lg transition shadow-md flex items-center justify-center gap-2">
+              📷 ถ่ายภาพ
+            </button>
+            <button id="btnRetake" onclick="resetWebcam()"
+              class="hidden bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2 px-4 rounded-lg transition">
+              🔄 ถ่ายใหม่
+            </button>
+          </div>
+        </div>
+
+        <!-- 3. เลือก Preset ตัวละครและสไตล์ -->
+        <div class="bg-slate-900/90 border border-slate-700 p-5 rounded-xl shadow-lg space-y-4">
+          <h2 class="text-lg font-semibold text-purple-400 flex items-center gap-2">
+            <span>✨</span> เลือกธีมตัวละครและสไตล์ AI
+          </h2>
+
+          <div>
+            <label class="block text-xs text-slate-400 mb-2">เลือกธีมตัวละคร (Character Theme)</label>
+            <div class="grid grid-cols-2 gap-2">
+              <button type="button" onclick="selectTheme('astronaut', this)" class="theme-btn bg-slate-800 border border-cyan-500/50 p-2.5 rounded-lg text-sm text-left hover:bg-slate-700 transition active-theme">
+                🚀 หุ่นยนต์นักบินอวกาศ
+              </button>
+              <button type="button" onclick="selectTheme('warrior', this)" class="theme-btn bg-slate-800 border border-slate-700 p-2.5 rounded-lg text-sm text-left hover:bg-slate-700 transition">
+                ⚔️ นักรบไซเบอร์
+              </button>
+              <button type="button" onclick="selectTheme('cat', this)" class="theme-btn bg-slate-800 border border-slate-700 p-2.5 rounded-lg text-sm text-left hover:bg-slate-700 transition">
+                🐱 แมวไซบอร์ก
+              </button>
+              <button type="button" onclick="selectTheme('dragon', this)" class="theme-btn bg-slate-800 border border-slate-700 p-2.5 rounded-lg text-sm text-left hover:bg-slate-700 transition">
+                🐲 มังกรกลอวกาศ
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs text-slate-400 mb-2">เลือกสไตล์ภาพ (Art Style)</label>
+            <div class="grid grid-cols-3 gap-2">
+              <button type="button" onclick="selectStyle('3D Render', this)" class="style-btn bg-slate-800 border border-purple-500/50 p-2 rounded-lg text-xs text-center hover:bg-slate-700 transition active-style">
+                🧊 3D Render
+              </button>
+              <button type="button" onclick="selectStyle('Anime Cyberpunk', this)" class="style-btn bg-slate-800 border border-slate-700 p-2 rounded-lg text-xs text-center hover:bg-slate-700 transition">
+                ⚡ Anime Cyberpunk
+              </button>
+              <button type="button" onclick="selectStyle('Pixel Art', this)" class="style-btn bg-slate-800 border border-slate-700 p-2 rounded-lg text-xs text-center hover:bg-slate-700 transition">
+                👾 Retro Pixel Art
+              </button>
+            </div>
+          </div>
+
+          <button onclick="generateCard()"
+            class="w-full bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-400 hover:to-purple-500 text-white font-bold py-3 rounded-lg shadow-lg text-lg tracking-wider transition transform hover:scale-[1.01]">
+            ⚡ สร้างการ์ดตัวละคร (Generate Card)
+          </button>
+        </div>
+
+      </div>
+
+      <!-- ฝั่งขวา: แสดงการ์ดที่ได้ + QR Code + ปุ่มพิมพ์ (Cols 5) -->
+      <div class="lg:col-span-5 space-y-6">
+        <div
+          class="bg-slate-900/90 border border-slate-700 p-5 rounded-xl shadow-lg text-center flex flex-col items-center">
+          <h2 class="text-lg font-semibold text-cyan-400 mb-4 flex items-center gap-2">
+            <span>🎴</span> ตัวอย่างการ์ดตัวละคร
+          </h2>
+
+          <!-- พื้นที่แสดง Canvas / Print Area -->
+          <div id="print-area" class="mb-4">
+            <canvas id="previewCanvas" width="400" height="600"
+              class="w-full max-w-[280px] h-auto rounded-xl border-2 border-cyan-500/50 shadow-2xl neon-border bg-slate-950"></canvas>
+          </div>
+
+          <!-- Loading Indicator -->
+          <div id="loading" class="hidden my-3 text-cyan-400 text-sm animate-pulse flex items-center gap-2">
+            <svg class="animate-spin h-5 w-5 text-cyan-400" xmlns="http://www.w3.org/2000/svg" fill="none"
+              viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+              </path>
+            </svg>
+            กำลังบันทึกลง Google Drive & Gen QR Code...
+          </div>
+
+          <!-- แสดง QR Code เมื่อบันทึกสำเร็จ -->
+          <div id="qrContainer" class="hidden flex flex-col items-center my-3 p-3 bg-white rounded-lg">
+            <div id="qrcode"></div>
+            <p class="text-xs text-slate-800 font-semibold mt-2">สแกนเพื่อดาวน์โหลดรูปการ์ด</p>
+          </div>
+
+          <!-- ปุ่มแอคชันท้ายสุด -->
+          <div class="w-full space-y-3 mt-2">
+            <button id="btnPrint" onclick="printCard()" disabled
+              class="w-full bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-600 text-white font-semibold py-2.5 rounded-lg transition flex items-center justify-center gap-2">
+              🖨️ พิมพ์การ์ด (Print Card)
+            </button>
+            <button onclick="resetAll()"
+              class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-2.5 rounded-lg transition border border-slate-700">
+              🔄 เริ่มใหม่ (Reset)
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+    // บังคับให้ Web App โหลดบนหน้าต่างหลัก ป้องกัน iframe บล็อกกล้อง
+  if (window.top !== window.self) {
+    window.top.location.href = window.self.location.href;
+  }
+    // Global Variables
+    let video = document.getElementById('webcam');
+    let capturedImage = document.getElementById('capturedImage');
+    let canvas = document.getElementById('previewCanvas');
+    let ctx = canvas.getContext('2d');
+    let webcamStream = null;
+    let userSnapshot = null;
+
+    let currentTheme = 'astronaut';
+    let currentStyle = '3D Render';
+
+    // สีและค่าตั้งต้นสำหรับแต่ละ Presets
+    const themeConfigs = {
+      astronaut: { name: 'CYBER ASTRONAUT', color: '#06b6d4', bgGradient: ['#0f172a', '#0284c7'] },
+      warrior: { name: 'FUTURE WARRIOR', color: '#ef4444', bgGradient: ['#1f2937', '#dc2626'] },
+      cat: { name: 'CYBORG CAT', color: '#f59e0b', bgGradient: ['#312e81', '#d97706'] },
+      dragon: { name: 'MECHA DRAGON', color: '#a855f7', bgGradient: ['#18181b', '#9333ea'] }
+    };
+
+    // เริ่มต้นระบบเมื่อเปิดหน้าเว็บ
+    window.onload = () => {
+      initWebcam();
+      drawCardTemplate();
+    };
+
+    // เปิดใช้งาน Webcam
+async function initWebcam() {
+  try {
+    // กำหนด constraints ชัดเจน
+    const constraints = { 
+      video: { 
+        width: { ideal: 1280 }, 
+        height: { ideal: 720 },
+        facingMode: "user" 
+      }, 
+      audio: false 
+    };
+    
+    webcamStream = await navigator.mediaDevices.getUserMedia(constraints);
+    video.srcObject = webcamStream;
+  } catch (err) {
+    console.error("Webcam Error Details:", err);
+    let msg = "ไม่สามารถเข้าถึงกล้อง Webcam ได้: ";
+    if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+      msg += "เบราว์เซอร์หรือผู้ใช้ปฏิเสธการเข้าถึงกล้อง (กรุณากดอนุญาตที่รูปแม่กุญแจ 🔒 ตรงแถบ URL)";
+    } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+      msg += "ไม่พบอุปกรณ์กล้อง Webcam เชื่อมต่ออยู่";
+    } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+      msg += "กล้องกำลังถูกใช้งานโดยโปรแกรมอื่นอยู่ (เช่น Zoom, Meet, หรือ Camo)";
+    } else {
+      msg += err.message;
+    }
+    alert(msg);
+  }
+}
+
+    // ถ่ายภาพ Snapshot
+    function takeSnapshot() {
+      if (!webcamStream) return;
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = video.videoWidth || 640;
+      tempCanvas.height = video.videoHeight || 480;
+      const tempCtx = tempCanvas.getContext('2d');
+      tempCtx.drawImage(video, 0, 0, tempCanvas.width, tempCanvas.height);
+      
+      userSnapshot = tempCanvas.toDataURL('image/png');
+      capturedImage.src = userSnapshot;
+      capturedImage.classList.remove('hidden');
+      video.classList.add('hidden');
+
+      document.getElementById('btnSnap').classList.add('hidden');
+      document.getElementById('btnRetake').classList.remove('hidden');
+
+      drawCardTemplate();
+    }
+
+    // ถ่ายใหม่ (Reset Webcam View)
+    function resetWebcam() {
+      userSnapshot = null;
+      capturedImage.classList.add('hidden');
+      video.classList.remove('hidden');
+      document.getElementById('btnSnap').classList.remove('hidden');
+      document.getElementById('btnRetake').classList.add('hidden');
+      drawCardTemplate();
+    }
+
+    // เลือกธีมตัวละคร
+    function selectTheme(themeKey, btn) {
+      currentTheme = themeKey;
+      document.querySelectorAll('.theme-btn').forEach(b => {
+        b.classList.remove('border-cyan-500/50', 'active-theme');
+        b.classList.add('border-slate-700');
+      });
+      btn.classList.remove('border-slate-700');
+      btn.classList.add('border-cyan-500/50', 'active-theme');
+      drawCardTemplate();
+    }
+
+    // เลือกสไตล์ภาพ
+    function selectStyle(styleName, btn) {
+      currentStyle = styleName;
+      document.querySelectorAll('.style-btn').forEach(b => {
+        b.classList.remove('border-purple-500/50', 'active-style');
+        b.classList.add('border-slate-700');
+      });
+      btn.classList.remove('border-slate-700');
+      btn.classList.add('border-purple-500/50', 'active-style');
+      drawCardTemplate();
+    }
+
+    // วาดโครงสร้างการ์ดลงบน HTML5 Canvas
+    function drawCardTemplate() {
+      const config = themeConfigs[currentTheme];
+      const name = document.getElementById('studentName').value || 'NAME SURNAME';
+      const studentClass = document.getElementById('studentClass').value || 'CLASS';
+
+      // 1. พื้นหลัง Gradient
+      const grad = ctx.createLinearGradient(0, 0, 0, 600);
+      grad.addColorStop(0, config.bgGradient[0]);
+      grad.addColorStop(1, config.bgGradient[1]);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 400, 600);
+
+      // 2. เส้นขอบการ์ดสไตล์ Sci-Fi (Border & Frame)
+      ctx.strokeStyle = config.color;
+      ctx.lineWidth = 6;
+      ctx.strokeRect(10, 10, 380, 580);
+
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(16, 16, 368, 568);
+
+      // 3. หัวการ์ด (Header Text)
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 20px Kanit';
+      ctx.textAlign = 'center';
+      ctx.fillText("SCIENCE DAY 2026", 200, 45);
+
+      ctx.fillStyle = config.color;
+      ctx.font = 'bold 16px Kanit';
+      ctx.fillText(`[ ${config.name} ]`, 200, 70);
+
+      // 4. ช่องวางรูปภาพถ่ายเด็ก (Photo Frame)
+      ctx.fillStyle = '#090d16';
+      ctx.fillRect(40, 90, 320, 320);
+      ctx.strokeStyle = config.color;
+      ctx.lineWidth = 3;
+      ctx.strokeRect(40, 90, 320, 320);
+
+      if (userSnapshot) {
+        const img = new Image();
+        img.onload = () => {
+          // วาดรูปถ่ายเด็กครอบลงในกรอบ
+          ctx.drawImage(img, 42, 92, 316, 316);
+          drawCardDetails(name, studentClass, config);
+        };
+        img.src = userSnapshot;
+      } else {
+        // ข้อความสร้างตัวแทนกรณีไม่มีรูปถ่าย
+        ctx.fillStyle = '#64748b';
+        ctx.font = '16px Kanit';
+        ctx.fillText("กรุณาถ่ายภาพหน้าตัวเอง", 200, 250);
+        drawCardDetails(name, studentClass, config);
+      }
+    }
+
+    // วาดรายละเอียดข้อความส่วนล่างของการ์ด
+    function drawCardDetails(name, studentClass, config) {
+      // แถบข้อมูลด้านล่าง
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+      ctx.fillRect(40, 430, 320, 130);
+      ctx.strokeStyle = config.color;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(40, 430, 320, 130);
+
+      // ข้อความรายละเอียด
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 18px Kanit';
+      ctx.fillText(`👤 ${name}`, 55, 462);
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '14px Kanit';
+      ctx.fillText(`การศึกษา: ${studentClass}`, 55, 490);
+      ctx.fillText(`สไตล์ภาพ: ${currentStyle}`, 55, 515);
+
+      ctx.fillStyle = config.color;
+      ctx.font = 'bold 12px Kanit';
+      ctx.fillText(`POWER: ${Math.floor(Math.random() * 200) + 800} HP  |  AI PROMPT ARTIST`, 55, 542);
+    }
+
+    // ประมวลผลสร้างการ์ด และส่งข้อมูลไป Google Drive ผ่าน GAS
+    function generateCard() {
+      drawCardTemplate();
+      
+      const name = document.getElementById('studentName').value;
+      if (!name) {
+        alert("กรุณากรอกชื่อ-นามสกุลก่อนสร้างการ์ด");
+        return;
+      }
+
+      if (!userSnapshot) {
+        alert("กรุณาถ่ายภาพหน้าตัวเองก่อนสร้างการ์ด");
+        return;
+      }
+
+      document.getElementById('loading').classList.remove('hidden');
+      document.getElementById('qrContainer').classList.add('hidden');
+      document.getElementById('btnPrint').disabled = true;
+
+      // แปลง Canvas เป็น Base64 PNG
+      const dataUrl = canvas.toDataURL('image/png');
+
+      // เรียกใช้ฟังก์ชัน Server-side uploadCardToDrive ใน Code.gs
+      google.script.run
+        .withSuccessHandler(onUploadSuccess)
+        .withFailureHandler(onUploadFailure)
+        .uploadCardToDrive(dataUrl, name);
+    }
+
+    // เมื่อบันทึกลง Google Drive สำเร็จ
+    function onUploadSuccess(response) {
+      document.getElementById('loading').classList.add('hidden');
+
+      if (response.success) {
+        // สร้าง QR Code จาก URL ของไฟล์ใน Google Drive
+        const qrDiv = document.getElementById('qrcode');
+        qrDiv.innerHTML = '';
+        new QRCode(qrDiv, {
+          text: response.fileUrl,
+          width: 128,
+          height: 128
+        });
+
+        document.getElementById('qrContainer').classList.remove('hidden');
+        document.getElementById('btnPrint').disabled = false;
+      } else {
+        alert("เกิดข้อผิดพลาดในการบันทึกไฟล์: " + response.error);
+      }
+    }
+
+    function onUploadFailure(error) {
+      document.getElementById('loading').classList.add('hidden');
+      alert("เกิดข้อผิดพลาดในการเชื่อมต่อ Google Drive: " + error);
+    }
+
+    // สั่งพิมพ์การ์ดออกทางเครื่องพิมพ์
+    function printCard() {
+      window.print();
+    }
+
+    // รีเซ็ตระบบทั้งหมดเพื่อต้อนรับเด็กคนถัดไป
+    function resetAll() {
+      document.getElementById('studentName').value = '';
+      document.getElementById('studentClass').value = '';
+      document.getElementById('qrContainer').classList.add('hidden');
+      document.getElementById('btnPrint').disabled = true;
+      resetWebcam();
+    }
+  </script>
+</body>
+
+</html>
